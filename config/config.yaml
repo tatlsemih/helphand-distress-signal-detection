@@ -1,0 +1,78 @@
+# HelpHand - Tehlike El Isareti Tespit Sistemi Konfigurasyonu
+# 5 sinifli FSM tabanli mimari
+
+model:
+  image_size: 224
+  num_classes: 5
+  landmark_dim: 63        # 21 nokta x 3 (x, y, z)
+  landmark_hidden: 256
+  fusion_dim: 512
+  dropout: 0.4
+  pretrained: true
+  class_names:
+    - phase1_open_palm      # Acik avuc - Asama 1
+    - phase2_thumb_palm     # Basparmak avuca - Asama 2
+    - phase3_fist           # Yumruk - Asama 3
+    - normal_hand           # Normal el hareketi
+    - no_signal             # El yok / alakasiz sahne
+
+training:
+  epochs: 60
+  batch_size: 32
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 15
+  num_workers: 4
+  val_split: 0.15
+  test_split: 0.15
+  checkpoint_dir: checkpoints
+  log_dir: logs
+  use_amp: true             # GPU hizlandirmasi icin AMP (Automatic Mixed Precision)
+
+dataset:
+  data_dir: data
+  image_dir: data/images
+  augmentation:
+    rotation_limit: 25
+    brightness_limit: 0.35
+    contrast_limit: 0.35
+    blur_limit: 5
+    noise_var_limit: 20.0
+    scale_min: 0.75
+    scale_max: 1.25
+
+# FSM (Finite State Machine) - 3 Asamali Sirali Tespit
+fsm:
+  # Her asama icin ayri guven esigi (Phase1 dusuk - az veri)
+  phase1_confidence: 0.65   # Acik avuc  - Dusuk esik (az + karma veriseti)
+  phase2_confidence: 0.75   # Basparmak  - Orta esik
+  phase3_confidence: 0.60   # Yumruk     - Dusuk esik (MediaPipe yumrukta zorlanir)
+
+  # Kararlilik: Art arda kac frame gorulmeli
+  min_stable_frames: 2      # Her asama icin minimum art arda frame (yumruk icin daha duyarli)
+
+  # Zaman asimlari
+  phase_timeout: 6.0        # Bir sonraki asama icin bekleme suresi (saniye)
+  total_timeout: 15.0       # Toplam hareket icin maksimum sure (saniye)
+
+  # Konumsal tutarlilik
+  bbox_iou_threshold: 0.10  # Asama gecislerinde minimum bbox kesisim orani (yumrukta bbox kuculuyor)
+
+inference:
+  alert_cooldown: 12.0      # Alarmlar arasi minimum sure (saniye)
+  max_hands: 2
+  display_fps: true
+  show_fsm_state: true      # Ekranda FSM durumunu goster
+  show_landmarks: false     # Landmark noktalarini goster
+
+camera:
+  source: 0                 # 0=webcam, veya RTSP URL
+  width: 640
+  height: 480
+  fps: 30
+
+mediapipe:
+  min_detection_confidence: 0.40   # Dusuruldu - yumruk tespiti icin (landmark'lar kapaninca confidence dusuyor)
+  min_tracking_confidence: 0.35    # Dusuruldu - yumruk takibi icin
+  max_num_hands: 2
+  model_complexity: 1
